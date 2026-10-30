@@ -1,3 +1,4 @@
+import uuid
 from decimal import Decimal, InvalidOperation
 
 from flask import Blueprint, jsonify, request
@@ -40,6 +41,7 @@ def create_order():
 
     order = Order(
         customer_id=customer_id.strip(),
+        idempotency_key=payload.get("idempotency_key") or str(uuid.uuid4()),
         status=payload.get("status", "pending"),
         total_amount=total_amount,
         currency=currency.upper(),

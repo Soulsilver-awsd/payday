@@ -59,6 +59,7 @@ Repite el proceso en `payment-api`.
 | GET    | `/api/v1/orders`        | Lista órdenes            |
 | POST   | `/api/v1/orders`        | Crea una orden           |
 | GET    | `/api/v1/orders/<id>`   | Obtiene una orden        |
+| POST   | `/orders`               | Pedido con stock idempotente |
 | GET    | `/api/v1/payments`      | Lista pagos              |
 | POST   | `/api/v1/payments`      | Crea un pago             |
 | GET    | `/api/v1/payments/<id>` | Obtiene un pago          |

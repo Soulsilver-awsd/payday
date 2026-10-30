@@ -9,9 +9,14 @@ def utcnow() -> datetime:
 
 class Order(db.Model):
     __tablename__ = "orders"
+    __table_args__ = (
+        db.CheckConstraint("items_reserved IN (0, 1)", name="ck_orders_items_reserved"),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
     customer_id = db.Column(db.String(64), nullable=False, index=True)
+    idempotency_key = db.Column(db.String(128), nullable=False, unique=True, index=True)
+    items_reserved = db.Column(db.Integer, nullable=False, default=0)
     status = db.Column(db.String(32), nullable=False, default="pending")
     total_amount = db.Column(db.Numeric(12, 2), nullable=False, default=0)
     currency = db.Column(db.String(3), nullable=False, default="USD")
@@ -26,7 +31,10 @@ class Order(db.Model):
     def to_dict(self) -> dict:
         return {
             "id": self.id,
+            "order_id": self.id,
             "customer_id": self.customer_id,
+            "idempotency_key": self.idempotency_key,
+            "items_reserved": self.items_reserved,
             "status": self.status,
             "total_amount": str(self.total_amount),
             "currency": self.currency,
