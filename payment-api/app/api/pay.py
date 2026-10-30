@@ -71,3 +71,17 @@ def pay():
         return jsonify({"error": "timeout", "payment_id": payment.id}), 504
 
     return jsonify(payment.to_dict()), 201
+
+
+@pay_bp.get("/payments/status")
+def payment_status():
+    idempotency_key = request.args.get("idempotency_key")
+    if not isinstance(idempotency_key, str) or not idempotency_key.strip():
+        raise APIError("idempotency_key is required and must be a non-empty string")
+
+    payment = db.session.scalar(
+        select(Payment).where(Payment.idempotency_key == idempotency_key.strip())
+    )
+    if payment is None:
+        raise APIError("Payment not found", status_code=404)
+    return jsonify(payment.to_dict())

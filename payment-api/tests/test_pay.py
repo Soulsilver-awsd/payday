@@ -72,3 +72,30 @@ def test_pay_rejects_invalid_input(client):
         == 400
     )
     assert client.post("/pay", json={"idempotency_key": "k", "amount": 0}).status_code == 400
+
+
+def test_payment_status_by_idempotency_key(client):
+    client.post(
+        "/pay",
+        json={"idempotency_key": "key-status", "amount": 10, "scenario": "approved"},
+    )
+
+    response = client.get(
+        "/payments/status",
+        query_string={"idempotency_key": "key-status"},
+    )
+
+    assert response.status_code == 200
+    payment = response.get_json()
+    assert payment["status"] == "approved"
+    assert payment["idempotency_key"] == "key-status"
+
+
+def test_payment_status_unknown_key_returns_404(client):
+    response = client.get(
+        "/payments/status",
+        query_string={"idempotency_key": "missing"},
+    )
+
+    assert response.status_code == 404
+

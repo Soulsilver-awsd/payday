@@ -7,11 +7,11 @@ con su propio entorno virtual, dependencias y base de datos.
 
 | Servicio      | Descripción                          | Puerto por defecto |
 | ------------- | ------------------------------------ | ------------------ |
-| `order-api`   | Gestión de órdenes                   | 5000               |
-| `payment-api` | Gestión de pagos                     | 5000               |
+| `order-api`   | Gestión de órdenes + orquestación    | 5000               |
+| `payment-api` | Gestión de pagos (mock)              | 5001               |
 
-> Los dos servicios usan el puerto 5000 por defecto. Al correrlos en paralelo,
-> usa `flask run --port 5001` (o similar) en uno de ellos.
+> `order-api` llama a `payment-api` mediante `PAYMENT_API_URL`
+> (`http://localhost:5001` por defecto).
 
 ## Estructura de cada servicio
 
@@ -48,7 +48,24 @@ flask --app wsgi db upgrade
 flask --app wsgi run --debug
 ```
 
-Repite el proceso en `payment-api`.
+Repite el proceso en `payment-api`, pero arráncalo en el puerto 5001:
+
+```bash
+cd payment-api
+flask --app wsgi run --debug --port 5001
+```
+
+## Demo
+
+Con ambos servicios levantados:
+
+```bash
+pip install requests
+python demo_runner.py
+```
+
+El runner ejecuta los 5 escenarios y usa `POST /demo/reset` para partir de
+stock inicial = 1 en cada caso.
 
 ## Endpoints base
 
@@ -64,6 +81,8 @@ Repite el proceso en `payment-api`.
 | POST   | `/api/v1/payments`      | Crea un pago             |
 | GET    | `/api/v1/payments/<id>` | Obtiene un pago          |
 | POST   | `/pay`                  | Cobro mock idempotente   |
+| GET    | `/payments/status`      | Consulta pago por clave  |
+| POST   | `/demo/reset`           | Reset de stock (demo)    |
 
 ## Tests
 

@@ -19,16 +19,17 @@ flask --app wsgi db init
 flask --app wsgi db migrate -m "initial schema"
 flask --app wsgi db upgrade
 
-flask --app wsgi run --debug
+flask --app wsgi run --debug --port 5001
 ```
 
-La API queda disponible en `http://localhost:5000`.
+La API queda disponible en `http://localhost:5001`.
 
 ## Endpoints
 
 - `GET /health` — liveness
 - `GET /health/ready` — readiness (incluye chequeo de base de datos)
 - `POST /pay` — cobro mock idempotente (`idempotency_key`, `amount`, `scenario`)
+- `GET /payments/status` — consulta un pago por `idempotency_key`
 - `GET /api/v1/payments` — lista pagos
 - `POST /api/v1/payments` — crea un pago
 - `GET /api/v1/payments/<id>` — obtiene un pago
@@ -42,7 +43,7 @@ Escenarios disponibles: `approved`, `rejected`, `timeout`.
   clave devuelve el pago almacenado.
 
 ```bash
-curl -X POST http://localhost:5000/pay \
+curl -X POST http://localhost:5001/pay \
   -H "Content-Type: application/json" \
   -d '{"idempotency_key": "pay_001", "amount": 49.90, "scenario": "approved"}'
 ```
@@ -50,7 +51,7 @@ curl -X POST http://localhost:5000/pay \
 Ejemplo:
 
 ```bash
-curl -X POST http://localhost:5000/api/v1/payments \
+curl -X POST http://localhost:5001/api/v1/payments \
   -H "Content-Type: application/json" \
   -d '{"order_id": "order_123", "amount": "49.90", "currency": "USD", "provider": "stripe"}'
 ```

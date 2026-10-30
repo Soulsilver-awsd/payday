@@ -6,6 +6,7 @@ API Flask para la gestión de órdenes de Payday.
 
 - Python 3.12+
 - SQLite para desarrollo (o PostgreSQL vía `DATABASE_URL`)
+- `payment-api` corriendo en `http://localhost:5001` (configurable con `PAYMENT_API_URL`)
 
 ## Setup
 
@@ -28,24 +29,31 @@ La API queda disponible en `http://localhost:5000`.
 
 - `GET /health` — liveness
 - `GET /health/ready` — readiness (incluye chequeo de base de datos)
-- `POST /orders` — crea un pedido reservando 1 unidad de stock (idempotente)
+- `POST /orders` — crea un pedido, reserva stock y orquesta el pago (idempotente)
+- `POST /demo/reset` — reinicia stock y pedidos (solo con `DEMO_MODE`)
 - `GET /api/v1/orders` — lista órdenes
 - `POST /api/v1/orders` — crea una orden
 - `GET /api/v1/orders/<id>` — obtiene una orden
 
 ### POST /orders
 
-Reserva la única unidad de inventario disponible en SQLite. La clave
-`idempotency_key` tiene una restricción `UNIQUE`: si se repite, devuelve el
-pedido existente sin descontar stock ni duplicarlo.
+Reserva la única unidad de inventario disponible en SQLite y llama a
+`POST /pay` del Payment Mock con la misma `idempotency_key`.
+
+- `scenario=approved`: el pedido queda `paid` y el stock reservado.
+- `scenario=rejected`: el pago se rechaza, se libera el stock y responde `402`.
+- `scenario=timeout`: el pago queda incierto; antes de decidir, se consulta
+  `GET /payments/status` con la misma clave. Si no hay confirmación, se libera
+  el stock y responde `504`.
+
+Si la `idempotency_key` ya existe, devuelve el pedido existente sin volver a
+cobrar ni descontar stock. Si no hay stock, responde `409 Out of stock`.
 
 ```bash
 curl -X POST http://localhost:5000/orders \
   -H "Content-Type: application/json" \
-  -d '{"idempotency_key": "order_001", "customer_id": "cus_123", "total_amount": 25.00}'
+  -d '{"idempotency_key": "order_001", "customer_id": "cus_123", "total_amount": 25.00, "scenario": "approved"}'
 ```
-
-Si el stock ya fue consumido, responde `409 Out of stock`.
 
 Ejemplo:
 

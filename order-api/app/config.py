@@ -17,15 +17,21 @@ class Config:
     SQLALCHEMY_DATABASE_URI = _database_uri("order.db")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     JSON_SORT_KEYS = False
+    DEMO_MODE = False
+
+    PAYMENT_API_URL = os.getenv("PAYMENT_API_URL", "http://localhost:5001").rstrip("/")
+    PAYMENT_TIMEOUT = float(os.getenv("PAYMENT_TIMEOUT", "10"))
 
 
 class DevelopmentConfig(Config):
     DEBUG = True
+    DEMO_MODE = True
 
 
 class TestingConfig(Config):
     TESTING = True
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
+    DEMO_MODE = True
 
 
 class ProductionConfig(Config):
