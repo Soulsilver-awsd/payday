@@ -17,9 +17,11 @@ def create_app(config_name: str | None = None) -> Flask:
     from app import models  # noqa: F401
 
     from app.api.health import health_bp
+    from app.api.pay import pay_bp
     from app.api.v1 import api_v1
 
     app.register_blueprint(health_bp)
+    app.register_blueprint(pay_bp)
     app.register_blueprint(api_v1, url_prefix="/api/v1")
 
     register_error_handlers(app)

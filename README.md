@@ -62,6 +62,7 @@ Repite el proceso en `payment-api`.
 | GET    | `/api/v1/payments`      | Lista pagos              |
 | POST   | `/api/v1/payments`      | Crea un pago             |
 | GET    | `/api/v1/payments/<id>` | Obtiene un pago          |
+| POST   | `/pay`                  | Cobro mock idempotente   |
 
 ## Tests
 

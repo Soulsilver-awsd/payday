@@ -11,7 +11,8 @@ class Payment(db.Model):
     __tablename__ = "payments"
 
     id = db.Column(db.Integer, primary_key=True)
-    order_id = db.Column(db.String(64), nullable=False, index=True)
+    order_id = db.Column(db.String(64), nullable=True, index=True)
+    idempotency_key = db.Column(db.String(128), nullable=False, unique=True, index=True)
     status = db.Column(db.String(32), nullable=False, default="pending")
     amount = db.Column(db.Numeric(12, 2), nullable=False)
     currency = db.Column(db.String(3), nullable=False, default="USD")
@@ -28,7 +29,9 @@ class Payment(db.Model):
     def to_dict(self) -> dict:
         return {
             "id": self.id,
+            "payment_id": self.id,
             "order_id": self.order_id,
+            "idempotency_key": self.idempotency_key,
             "status": self.status,
             "amount": str(self.amount),
             "currency": self.currency,

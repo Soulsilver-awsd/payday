@@ -1,3 +1,4 @@
+import uuid
 from decimal import Decimal, InvalidOperation
 
 from flask import Blueprint, jsonify, request
@@ -40,6 +41,7 @@ def create_payment():
 
     payment = Payment(
         order_id=order_id.strip(),
+        idempotency_key=payload.get("idempotency_key") or str(uuid.uuid4()),
         status=payload.get("status", "pending"),
         amount=amount,
         currency=currency.upper(),

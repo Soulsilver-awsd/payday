@@ -28,9 +28,24 @@ La API queda disponible en `http://localhost:5000`.
 
 - `GET /health` — liveness
 - `GET /health/ready` — readiness (incluye chequeo de base de datos)
+- `POST /pay` — cobro mock idempotente (`idempotency_key`, `amount`, `scenario`)
 - `GET /api/v1/payments` — lista pagos
 - `POST /api/v1/payments` — crea un pago
 - `GET /api/v1/payments/<id>` — obtiene un pago
+
+### POST /pay
+
+Escenarios disponibles: `approved`, `rejected`, `timeout`.
+
+- Una `idempotency_key` existente devuelve el pago previo sin volver a cobrar.
+- `timeout` persiste el cobro en SQLite y responde `504`; un reintento con la misma
+  clave devuelve el pago almacenado.
+
+```bash
+curl -X POST http://localhost:5000/pay \
+  -H "Content-Type: application/json" \
+  -d '{"idempotency_key": "pay_001", "amount": 49.90, "scenario": "approved"}'
+```
 
 Ejemplo:
 
