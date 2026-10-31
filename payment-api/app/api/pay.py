@@ -1,7 +1,7 @@
 from decimal import Decimal, InvalidOperation
 
 from flask import Blueprint, jsonify, request
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 
 from app.errors import APIError
@@ -45,9 +45,12 @@ def pay():
     if scenario not in SCENARIOS:
         raise APIError("scenario must be one of: approved, rejected, timeout")
 
+    # In timeout scenario, the mock registers the charge as approved before the response is lost.
+    status = "approved" if scenario == "timeout" else scenario
+
     payment = Payment(
         idempotency_key=idempotency_key,
-        status=scenario,
+        status=status,
         amount=_parse_amount(payload.get("amount")),
         currency="USD",
         provider="mock",
@@ -67,7 +70,7 @@ def pay():
         return jsonify(existing.to_dict()), 200
 
     if scenario == "timeout":
-        # The charge is already persisted, but the client sees a network failure.
+        # The charge is persisted as approved, but the client experiences a network failure/timeout.
         return jsonify({"error": "timeout", "payment_id": payment.id}), 504
 
     return jsonify(payment.to_dict()), 201
@@ -85,3 +88,10 @@ def payment_status():
     if payment is None:
         raise APIError("Payment not found", status_code=404)
     return jsonify(payment.to_dict())
+
+
+@pay_bp.post("/demo/reset")
+def demo_reset():
+    db.session.execute(delete(Payment))
+    db.session.commit()
+    return jsonify({"status": "reset", "payments_cleared": True})

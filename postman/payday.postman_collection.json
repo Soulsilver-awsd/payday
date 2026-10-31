@@ -1,0 +1,510 @@
+{
+  "info": {
+    "_postman_id": "c7a8b92d-9442-4f10-bf21-992160924e23",
+    "name": "Payday - Reto Técnico Idempotencia y Recuperación",
+    "description": "Colección de pruebas para el Reto Técnico de Sistemas Distribuidos: Pedidos, pagos simulados e idempotencia con Flask y SQLite.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "order_api_url",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "payment_api_url",
+      "value": "http://localhost:5001",
+      "type": "string"
+    },
+    {
+      "key": "key_case1",
+      "value": "idem-case1-approved-001",
+      "type": "string"
+    },
+    {
+      "key": "key_case2",
+      "value": "idem-case2-replay-002",
+      "type": "string"
+    },
+    {
+      "key": "key_case3",
+      "value": "idem-case3-timeout-003",
+      "type": "string"
+    },
+    {
+      "key": "key_case4",
+      "value": "idem-case4-rejected-004",
+      "type": "string"
+    },
+    {
+      "key": "key_case5_a",
+      "value": "idem-case5-stock-ok-005a",
+      "type": "string"
+    },
+    {
+      "key": "key_case5_b",
+      "value": "idem-case5-stock-exhausted-005b",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Utilidades (Reset & Consultas)",
+      "item": [
+        {
+          "name": "Reset Demo (Order API)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{order_api_url}}/demo/reset",
+              "host": ["{{order_api_url}}"],
+              "path": ["demo", "reset"]
+            },
+            "description": "Reinicia la tabla de órdenes y restaura el inventario a 1 unidad disponible."
+          }
+        },
+        {
+          "name": "Reset Demo (Payment API)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{payment_api_url}}/demo/reset",
+              "host": ["{{payment_api_url}}"],
+              "path": ["demo", "reset"]
+            },
+            "description": "Limpia la tabla de pagos del Payment Mock para reiniciar el escenario."
+          }
+        },
+        {
+          "name": "Consultar Inventario",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{order_api_url}}/inventory",
+              "host": ["{{order_api_url}}"],
+              "path": ["inventory"]
+            },
+            "description": "Muestra el stock disponible actual (1 o 0)."
+          }
+        },
+        {
+          "name": "Listar Órdenes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{order_api_url}}/orders",
+              "host": ["{{order_api_url}}"],
+              "path": ["orders"]
+            },
+            "description": "Lista todas las órdenes almacenadas en Order API."
+          }
+        },
+        {
+          "name": "Listar Pagos en Mock",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{payment_api_url}}/api/v1/payments",
+              "host": ["{{payment_api_url}}"],
+              "path": ["api", "v1", "payments"]
+            },
+            "description": "Lista todos los pagos persistidos en Payment Mock."
+          }
+        }
+      ]
+    },
+    {
+      "name": "1. Caso 1 - Flujo Exitoso (Pago Aprobado)",
+      "item": [
+        {
+          "name": "1.1 Preparación - Reset Inventario",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{order_api_url}}/demo/reset",
+              "host": ["{{order_api_url}}"],
+              "path": ["demo", "reset"]
+            }
+          }
+        },
+        {
+          "name": "1.2 Crear Pedido Aprobado",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotency_key\": \"{{key_case1}}\",\n  \"customer_id\": \"cliente-caso-1\",\n  \"total_amount\": \"49.90\",\n  \"currency\": \"USD\",\n  \"scenario\": \"approved\"\n}"
+            },
+            "url": {
+              "raw": "{{order_api_url}}/orders",
+              "host": ["{{order_api_url}}"],
+              "path": ["orders"]
+            },
+            "description": "Demuestra: Un pedido creado, una reserva, cobro aprobado (HTTP 201) y status 'paid'."
+          }
+        },
+        {
+          "name": "1.3 Consultar Pedido Creado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{order_api_url}}/orders?idempotency_key={{key_case1}}",
+              "host": ["{{order_api_url}}"],
+              "path": ["orders"],
+              "query": [
+                {
+                  "key": "idempotency_key",
+                  "value": "{{key_case1}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "1.4 Verificar Stock Consumido (available = 0)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{order_api_url}}/inventory",
+              "host": ["{{order_api_url}}"],
+              "path": ["inventory"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Caso 2 - Repetición de Misma Solicitud (Idempotencia)",
+      "item": [
+        {
+          "name": "2.1 Preparación - Reset Inventario",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{order_api_url}}/demo/reset",
+              "host": ["{{order_api_url}}"],
+              "path": ["demo", "reset"]
+            }
+          }
+        },
+        {
+          "name": "2.2 Primer Envío de Pedido",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotency_key\": \"{{key_case2}}\",\n  \"customer_id\": \"cliente-caso-2\",\n  \"total_amount\": \"25.00\",\n  \"currency\": \"USD\",\n  \"scenario\": \"approved\"\n}"
+            },
+            "url": {
+              "raw": "{{order_api_url}}/orders",
+              "host": ["{{order_api_url}}"],
+              "path": ["orders"]
+            },
+            "description": "Crea el pedido por primera vez (HTTP 201)."
+          }
+        },
+        {
+          "name": "2.3 Reenvío con Misma Clave (Idempotencia)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotency_key\": \"{{key_case2}}\",\n  \"customer_id\": \"cliente-caso-2-replay\",\n  \"total_amount\": \"25.00\",\n  \"currency\": \"USD\",\n  \"scenario\": \"approved\"\n}"
+            },
+            "url": {
+              "raw": "{{order_api_url}}/orders",
+              "host": ["{{order_api_url}}"],
+              "path": ["orders"]
+            },
+            "description": "Demuestra: Reconoce la operación previa devolviendo HTTP 200 OK y el mismo id de orden; NO duplica pedido, reserva ni cobro."
+          }
+        },
+        {
+          "name": "2.4 Verificar Solo Existe 1 Pedido",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{order_api_url}}/orders",
+              "host": ["{{order_api_url}}"],
+              "path": ["orders"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Caso 3 - Falla Simulada y Recuperación (Timeout tras Cobro)",
+      "item": [
+        {
+          "name": "3.1 Preparación - Reset Inventario",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{order_api_url}}/demo/reset",
+              "host": ["{{order_api_url}}"],
+              "path": ["demo", "reset"]
+            }
+          }
+        },
+        {
+          "name": "3.2 Crear Pedido con Timeout en Cobro",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotency_key\": \"{{key_case3}}\",\n  \"customer_id\": \"cliente-caso-3\",\n  \"total_amount\": \"35.50\",\n  \"currency\": \"USD\",\n  \"scenario\": \"timeout\"\n}"
+            },
+            "url": {
+              "raw": "{{order_api_url}}/orders",
+              "host": ["{{order_api_url}}"],
+              "path": ["orders"]
+            },
+            "description": "Demuestra: El Payment Mock registra el cobro y simula timeout (HTTP 504). El backend consulta el estado persistido del pago por idempotency_key, recupera el cobro aprobado y confirma el pedido como 'paid' sin cobrar a ciegas."
+          }
+        },
+        {
+          "name": "3.3 Consultar Estado del Pago en Mock",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{payment_api_url}}/payments/status?idempotency_key={{key_case3}}",
+              "host": ["{{payment_api_url}}"],
+              "path": ["payments", "status"],
+              "query": [
+                {
+                  "key": "idempotency_key",
+                  "value": "{{key_case3}}"
+                }
+              ]
+            },
+            "description": "Demuestra que el pago sí fue registrado en SQLite del mock con status 'approved'."
+          }
+        },
+        {
+          "name": "3.4 Consultar Pedido Recuperado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{order_api_url}}/orders?idempotency_key={{key_case3}}",
+              "host": ["{{order_api_url}}"],
+              "path": ["orders"],
+              "query": [
+                {
+                  "key": "idempotency_key",
+                  "value": "{{key_case3}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "3.5 Reintentar con Misma Clave (No Duplica)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotency_key\": \"{{key_case3}}\",\n  \"customer_id\": \"cliente-caso-3\",\n  \"total_amount\": \"35.50\",\n  \"currency\": \"USD\",\n  \"scenario\": \"timeout\"\n}"
+            },
+            "url": {
+              "raw": "{{order_api_url}}/orders",
+              "host": ["{{order_api_url}}"],
+              "path": ["orders"]
+            },
+            "description": "Demuestra que al reintentar se devuelve la orden ya pagada (HTTP 200) sin duplicar el cobro."
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Caso 4 - Pago Rechazado y Compensación",
+      "item": [
+        {
+          "name": "4.1 Preparación - Reset Inventario",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{order_api_url}}/demo/reset",
+              "host": ["{{order_api_url}}"],
+              "path": ["demo", "reset"]
+            }
+          }
+        },
+        {
+          "name": "4.2 Crear Pedido con Pago Rechazado",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotency_key\": \"{{key_case4}}\",\n  \"customer_id\": \"cliente-caso-4\",\n  \"total_amount\": \"15.00\",\n  \"currency\": \"USD\",\n  \"scenario\": \"rejected\"\n}"
+            },
+            "url": {
+              "raw": "{{order_api_url}}/orders",
+              "host": ["{{order_api_url}}"],
+              "path": ["orders"]
+            },
+            "description": "Demuestra: El cobro es rechazado (HTTP 402), el pedido queda en status 'payment_rejected' y items_reserved = 0."
+          }
+        },
+        {
+          "name": "4.3 Verificar Compensación de Stock (available = 1)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{order_api_url}}/inventory",
+              "host": ["{{order_api_url}}"],
+              "path": ["inventory"]
+            },
+            "description": "Demuestra que el inventario fue liberado exactamente una vez y vuelve a estar disponible."
+          }
+        },
+        {
+          "name": "4.4 Reenviar Pedido Rechazado (Idempotente)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotency_key\": \"{{key_case4}}\",\n  \"customer_id\": \"cliente-caso-4\",\n  \"total_amount\": \"15.00\",\n  \"currency\": \"USD\",\n  \"scenario\": \"rejected\"\n}"
+            },
+            "url": {
+              "raw": "{{order_api_url}}/orders",
+              "host": ["{{order_api_url}}"],
+              "path": ["orders"]
+            },
+            "description": "Devuelve la orden existente con status 'payment_rejected' (HTTP 200) sin alterar stock."
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Caso 5 - Otra Intención de Compra (Stock Agotado)",
+      "item": [
+        {
+          "name": "5.1 Preparación - Reset Inventario",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{order_api_url}}/demo/reset",
+              "host": ["{{order_api_url}}"],
+              "path": ["demo", "reset"]
+            }
+          }
+        },
+        {
+          "name": "5.2 Pedido A con Clave Propia (Aceptado)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotency_key\": \"{{key_case5_a}}\",\n  \"customer_id\": \"cliente-comprador-A\",\n  \"total_amount\": \"50.00\",\n  \"currency\": \"USD\",\n  \"scenario\": \"approved\"\n}"
+            },
+            "url": {
+              "raw": "{{order_api_url}}/orders",
+              "host": ["{{order_api_url}}"],
+              "path": ["orders"]
+            },
+            "description": "Consume la única unidad de stock disponible (HTTP 201)."
+          }
+        },
+        {
+          "name": "5.3 Pedido B con Otra Clave (Rechazado por Stock)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotency_key\": \"{{key_case5_b}}\",\n  \"customer_id\": \"cliente-comprador-B\",\n  \"total_amount\": \"50.00\",\n  \"currency\": \"USD\",\n  \"scenario\": \"approved\"\n}"
+            },
+            "url": {
+              "raw": "{{order_api_url}}/orders",
+              "host": ["{{order_api_url}}"],
+              "path": ["orders"]
+            },
+            "description": "Demuestra: Una clave distinta representa otra intención. Como el stock quedó en 0, se rechaza con HTTP 409 'Out of stock' y NO se realiza cobro."
+          }
+        },
+        {
+          "name": "5.4 Verificar Stock Nunca Negativo (available = 0)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{order_api_url}}/inventory",
+              "host": ["{{order_api_url}}"],
+              "path": ["inventory"]
+            },
+            "description": "Comprueba que available permanece en 0 y nunca pasa a números negativos."
+          }
+        }
+      ]
+    }
+  ]
+}

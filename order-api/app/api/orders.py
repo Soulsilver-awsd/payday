@@ -227,6 +227,34 @@ def create_order():
     return jsonify(order.to_dict()), status_code
 
 
+@orders_api_bp.get("/orders/<int:order_id>")
+def get_order_by_id(order_id: int):
+    order = db.session.get(Order, order_id)
+    if order is None:
+        raise APIError("Order not found", status_code=404)
+    return jsonify(order.to_dict()), 200
+
+
+@orders_api_bp.get("/orders")
+def get_orders():
+    idempotency_key = request.args.get("idempotency_key")
+    if idempotency_key:
+        order = _get_by_key(idempotency_key.strip())
+        if order is None:
+            raise APIError("Order not found", status_code=404)
+        return jsonify(order.to_dict()), 200
+
+    orders = db.session.scalars(select(Order).order_by(Order.id)).all()
+    return jsonify({"items": [order.to_dict() for order in orders]}), 200
+
+
+@orders_api_bp.get("/inventory")
+def get_inventory():
+    _ensure_inventory()
+    inv = db.session.get(Inventory, INVENTORY_ID)
+    return jsonify({"available": inv.available if inv else 0}), 200
+
+
 @orders_api_bp.post("/demo/reset")
 def demo_reset():
     if not current_app.config.get("DEMO_MODE", False):
