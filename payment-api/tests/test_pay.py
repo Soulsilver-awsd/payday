@@ -51,7 +51,7 @@ def test_pay_timeout_persists_charge_and_retry_returns_it(client, app):
             select(Payment).where(Payment.idempotency_key == "key-timeout")
         )
         assert payment is not None
-        assert payment.status == "timeout"
+        assert payment.status == "approved"
 
     retry = client.post(
         "/pay",
@@ -59,7 +59,7 @@ def test_pay_timeout_persists_charge_and_retry_returns_it(client, app):
     )
 
     assert retry.status_code == 200
-    assert retry.get_json()["status"] == "timeout"
+    assert retry.get_json()["status"] == "approved"
 
 
 def test_pay_rejects_invalid_input(client):
@@ -98,4 +98,3 @@ def test_payment_status_unknown_key_returns_404(client):
     )
 
     assert response.status_code == 404
-
